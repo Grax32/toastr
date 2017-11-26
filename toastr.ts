@@ -1,8 +1,24 @@
-"use strict";
-var module = {
+
+interface Window {
+    toastr: any;
+    jQuery: any;
+}
+
+interface Definish {
+    amd: any
+}
+
+var module: { exports: string } = {
     exports: "MODULE"
 };
-var require = (name) => { };
+
+var require = (name: string) => { };
+
+declare function define(): void;
+declare namespace define {
+    export var amd: string;
+}
+
 /*
  * Toastr
  * Copyright 2012-2015
@@ -17,10 +33,90 @@ var require = (name) => { };
  */
 /* global define */
 (function (define) {
-    define(['jquery'], function ($) {
+    define(['jquery'], function ($: any) {
         return (function () {
+
             function noOp() { }
-            var listener = null;
+
+            interface Response {
+                toastId: number,
+                state: string,
+                startTime: Date,
+                endTime: Date | null,
+                options: any,
+                map: any
+            }
+
+            interface NotifyOptionsMap {
+                type: string,
+                iconClass: string,
+                message: string,
+                optionsOverride: any,
+                title: string
+            }
+
+            interface ProgressBar {
+                intervalId: number | null,
+                hideEta: number | null,
+                maxHideTime?: number | null
+            }
+
+            interface AnimateOptions {
+                easing: string | boolean,
+                duration: number | boolean,
+                complete: { (evt?: MouseEvent): void } | null
+            }
+
+            interface ToastrOptions {
+                tapToDismiss: boolean,
+                toastClass: string,
+                containerId: string,
+                debug: boolean,
+
+                showMethod: string,
+                showDuration: number | boolean,
+                showEasing: string | boolean,
+                onShown: {
+                    (evt?: MouseEvent)
+                        : void
+                } | null,
+                hideMethod: string,
+                hideDuration: number | boolean,
+                hideEasing: string | boolean,
+                onHidden: { (evt?: MouseEvent): void } | null,
+                closeMethod: string,
+                closeDuration: number | boolean,
+                closeEasing: string | boolean,
+                closeOnHover: boolean,
+                closeButton: boolean,
+
+                onCloseClick: { (evt?: MouseEvent): void } | null,
+                onclick: { (evt?: MouseEvent): void } | null,
+
+                extendedTimeOut: number,
+                iconClasses: {
+                    error: 'toast-error',
+                    info: 'toast-info',
+                    success: 'toast-success',
+                    warning: 'toast-warning'
+                };
+                iconClass: string,
+                positionClass: string,
+                timeOut: number,
+                titleClass: string,
+                messageClass: string
+                escapeHtml: boolean,
+                target: string,
+                closeHtml: string,
+                closeClass: string,
+                newestOnTop: boolean,
+                preventDuplicates: boolean,
+                progressBar: boolean,
+                progressClass: string,
+                rtl: boolean
+            }
+
+            var listener: { (...args: any[]): void } | null = null;
             var toastId = 0;
             var toastType = {
                 error: 'error',
@@ -28,6 +124,7 @@ var require = (name) => { };
                 success: 'success',
                 warning: 'warning'
             };
+
             var toastr = {
                 clear: clear,
                 remove: remove,
@@ -40,38 +137,46 @@ var require = (name) => { };
                 version: '2.1.4',
                 warning: warning
             };
-            var previousToast;
+
+            var previousToast: string | null;
+
             return toastr;
+
             ////////////////
-            function throwException(err, message) {
+
+            function throwException<T>(err: { new(message: string): T }, message: string): void {
                 throw new err(message);
             }
-            function getElementFromSelector(selector) {
+
+            function getElementFromSelector(selector: string): HTMLElement | null {
                 // return a single element from a jQuery-like selector
                 if (selector.startsWith("#")) {
                     return document.getElementById(selector.slice(1));
-                }
-                else if (selector.startsWith(".")) {
-                    return document.getElementsByClassName(selector.slice(1))[0];
-                }
-                else {
-                    return document.getElementsByTagName(selector)[0];
+                } else if (selector.startsWith(".")) {
+                    return <HTMLElement>document.getElementsByClassName(selector.slice(1))[0];
+                } else {
+                    return <HTMLElement>document.getElementsByTagName(selector)[0];
                 }
             }
-            function elementIsVisible(element) {
+
+            function elementIsVisible(element: HTMLElement): boolean {
                 return !!(element.offsetWidth || element.offsetHeight || element.getClientRects().length);
             }
-            function elementOnHover(element, mouseOver, mouseOut) {
+
+            function elementOnHover(element: HTMLElement, mouseOver: () => void, mouseOut: () => void): void {
                 element.addEventListener('mouseover', mouseOver);
                 element.addEventListener('mouseout', mouseOut);
             }
-            function elementHasFocus(element) {
+
+            function elementHasFocus(element: HTMLElement): boolean {
                 return element === document.activeElement;
             }
-            function callAnimateMethod(element, method, animateOptions) {
+
+            function callAnimateMethod(element: HTMLElement, method: string, animateOptions: AnimateOptions): void {
                 $(element)[method](animateOptions);
             }
-            function error(message, title, optionsOverride) {
+
+            function error(message: string, title: string, optionsOverride: any) {
                 return notify({
                     type: toastType.error,
                     iconClass: getOptions().iconClasses.error,
@@ -80,10 +185,9 @@ var require = (name) => { };
                     title: title
                 });
             }
-            function getContainer(options, create) {
-                if (!options) {
-                    options = getOptions();
-                }
+
+            function getContainer(options?: any, create?: boolean): HTMLElement {
+                if (!options) { options = getOptions(); }
                 var container = document.getElementById(options.containerId);
                 if (container) {
                     return container;
@@ -96,7 +200,8 @@ var require = (name) => { };
                 }
                 return container;
             }
-            function info(message, title, optionsOverride) {
+
+            function info(message: string, title: string, optionsOverride: {}) {
                 return notify({
                     type: toastType.info,
                     iconClass: getOptions().iconClasses.info,
@@ -105,10 +210,12 @@ var require = (name) => { };
                     title: title
                 });
             }
-            function subscribe(callback) {
+
+            function subscribe(callback: { (...args: any[]): void }) {
                 listener = callback;
             }
-            function success(message, title, optionsOverride) {
+
+            function success(message: string, title: string, optionsOverride: {}) {
                 return notify({
                     type: toastType.success,
                     iconClass: getOptions().iconClasses.success,
@@ -117,7 +224,8 @@ var require = (name) => { };
                     title: title
                 });
             }
-            function warning(message, title, optionsOverride) {
+
+            function warning(message: string, title: string, optionsOverride: {}) {
                 return notify({
                     type: toastType.warning,
                     iconClass: getOptions().iconClasses.warning,
@@ -126,61 +234,72 @@ var require = (name) => { };
                     title: title
                 });
             }
-            function clear($toastElement, clearOptions) {
+
+            function clear($toastElement: HTMLElement, clearOptions: any) {
                 var options = getOptions();
                 if (!clearToast($toastElement, options, clearOptions)) {
                     var container = getContainer(options);
                     clearContainer(container, options);
                 }
             }
-            function remove($toastElement) {
+
+            function remove($toastElement: HTMLElement) {
                 var options = getOptions();
                 if ($toastElement && $toastElement.id === document.activeElement.id) {
                     removeToast($toastElement);
                     return;
                 }
+
                 var container = getContainer(options);
+
                 if (container && container.childElementCount) {
                     container.remove();
                 }
             }
+
             // internal functions
-            function clearContainer($container, options) {
-                if (!$container)
-                    return;
+
+            function clearContainer($container: HTMLElement, options: any) {
+                if (!$container) return;
                 var toastsToClear = $container.children;
                 for (var i = toastsToClear.length - 1; i >= 0; i--) {
-                    clearToast(toastsToClear[i], options);
+                    clearToast(<HTMLElement>toastsToClear[i], options);
                 }
             }
-            function clearToast($toastElement, options, clearOptions) {
+
+            function clearToast($toastElement: HTMLElement, options?: any, clearOptions?: any): boolean {
                 var force = clearOptions && clearOptions.force ? clearOptions.force : false;
                 if ($toastElement && (force || !elementHasFocus($toastElement))) {
                     callAnimateMethod($toastElement, options.hideMethod, {
                         duration: options.hideDuration,
                         easing: options.hideEasing,
                         complete: function () { removeToast($toastElement); }
-                    });
+                    })
+
                     return true;
                 }
                 return false;
             }
-            function createContainer(options) {
+
+            function createContainer(options: { containerId: string, positionClass: string, target: HTMLElement }) {
                 var container = document.createElement("div");
                 container.setAttribute("id", options.containerId);
                 container.classList.add(options.positionClass);
+
                 options.target.appendChild(container);
                 return container;
             }
-            function getDefaults() {
+
+            function getDefaults(): ToastrOptions {
                 return {
                     tapToDismiss: true,
                     toastClass: 'toast',
                     containerId: 'toast-container',
                     debug: false,
-                    showMethod: 'fadeIn',
+
+                    showMethod: 'fadeIn', //fadeIn, slideDown, and show are built into jQuery
                     showDuration: 300,
-                    showEasing: 'swing',
+                    showEasing: 'swing', //swing and linear are built into jQuery
                     onShown: () => { },
                     hideMethod: 'fadeOut',
                     hideDuration: 1000,
@@ -191,8 +310,10 @@ var require = (name) => { };
                     closeEasing: false,
                     closeOnHover: true,
                     closeButton: false,
+
                     onCloseClick: () => { },
                     onclick: () => { },
+
                     extendedTimeOut: 1000,
                     iconClasses: {
                         error: 'toast-error',
@@ -202,7 +323,7 @@ var require = (name) => { };
                     },
                     iconClass: 'toast-info',
                     positionClass: 'toast-top-right',
-                    timeOut: 5000,
+                    timeOut: 5000, // Set timeOut and extendedTimeOut to 0 to make it sticky
                     titleClass: 'toast-title',
                     messageClass: 'toast-message',
                     escapeHtml: false,
@@ -214,38 +335,42 @@ var require = (name) => { };
                     progressBar: false,
                     progressClass: 'toast-progress',
                     rtl: false
-                };
-            }
-            function publish(args) {
-                if (!listener) {
-                    return;
                 }
+            }
+
+            function publish(args: any): void {
+                if (!listener) { return; }
                 listener(args);
             }
-            function notify(map) {
+
+            function notify(map: NotifyOptionsMap) {
                 var options = getOptions();
                 var iconClass = map.iconClass || options.iconClass;
+
                 if (typeof (map.optionsOverride) !== 'undefined') {
                     options = Object.assign(options, map.optionsOverride);
                     iconClass = map.optionsOverride.iconClass || iconClass;
                 }
-                if (shouldExit(options, map)) {
-                    return;
-                }
+
+                if (shouldExit(options, map)) { return; }
+
                 toastId++;
+
                 var $container = getContainer(options, true);
-                var intervalId = null;
-                var $toastElement = document.createElement('div');
-                var $titleElement = document.createElement('div');
-                var $messageElement = document.createElement('div');
-                var $progressElement = document.createElement('div');
-                var $closeElement = getElementFromSelector(options.closeHtml);
-                var progressBar = {
+
+                var intervalId: number | null = null;
+                var $toastElement: HTMLElement = document.createElement('div');
+                var $titleElement: HTMLElement = document.createElement('div');
+                var $messageElement: HTMLElement = document.createElement('div');
+                var $progressElement: HTMLElement = document.createElement('div');
+                var $closeElement: HTMLElement | null = getElementFromSelector(options.closeHtml);
+                var progressBar: ProgressBar = {
                     intervalId: null,
                     hideEta: null,
                     maxHideTime: null
                 };
-                var response = {
+
+                var response: Response = {
                     toastId: toastId,
                     state: 'visible',
                     startTime: new Date(),
@@ -253,18 +378,26 @@ var require = (name) => { };
                     options: options,
                     map: map
                 };
+
                 personalizeToast();
+
                 displayToast();
+
                 handleEvents();
+
                 publish(response);
+
                 if (options.debug && console) {
                     console.log(response);
                 }
+
                 return $toastElement;
-                function escapeHtml(source) {
+
+                function escapeHtml(source: string) {
                     if (source == null) {
                         source = '';
                     }
+
                     return source
                         .replace(/&/g, '&amp;')
                         .replace(/"/g, '&quot;')
@@ -272,7 +405,8 @@ var require = (name) => { };
                         .replace(/</g, '&lt;')
                         .replace(/>/g, '&gt;');
                 }
-                function personalizeToast() {
+
+                function personalizeToast(): void {
                     setIcon();
                     setTitle();
                     setMessage();
@@ -282,7 +416,8 @@ var require = (name) => { };
                     setSequence();
                     setAria();
                 }
-                function setAria() {
+
+                function setAria(): void {
                     var ariaValue = '';
                     switch (map.iconClass) {
                         case 'toast-success':
@@ -294,45 +429,55 @@ var require = (name) => { };
                     }
                     $toastElement.setAttribute('aria-live', ariaValue);
                 }
-                function handleEvents() {
+
+                function handleEvents(): void {
                     if (options.closeOnHover) {
                         elementOnHover($toastElement, stickAround, delayedHideToast);
                     }
+
                     if (!options.onclick && options.tapToDismiss) {
-                        $toastElement.onclick = (ev) => hideToast(false);
+                        $toastElement.onclick = (ev: MouseEvent) => hideToast(false);
                     }
+
                     if (options.closeButton && $closeElement) {
                         $closeElement.onclick = (function (event) {
                             if (event.stopPropagation) {
                                 event.stopPropagation();
-                            }
-                            else if (event.cancelBubble !== undefined && event.cancelBubble !== true) {
+                            } else if (event.cancelBubble !== undefined && event.cancelBubble !== true) {
                                 event.cancelBubble = true;
                             }
+
                             if (options.onCloseClick) {
                                 options.onCloseClick(event);
                             }
+
                             hideToast(true);
                         });
                     }
+
                     if (options.onclick) {
                         var optionsOnClick = options.onclick;
+
                         $toastElement.onclick = function (event) {
                             optionsOnClick(event);
                             hideToast(false);
                         };
                     }
                 }
-                function displayToast() {
+
+                function displayToast(): void {
                     $toastElement.style.display = "none";
+
                     callAnimateMethod($toastElement, options.showMethod, {
                         duration: options.showDuration,
                         easing: options.showEasing,
                         complete: options.onShown
                     });
+
                     //$toastElement[options.showMethod](
                     //    { duration: options.showDuration, easing: options.showEasing, complete: options.onShown }
                     //);
+
                     if (options.timeOut > 0) {
                         intervalId = setTimeout(hideToast, options.timeOut);
                         progressBar.maxHideTime = parseFloat(options.timeOut.toString());
@@ -342,75 +487,86 @@ var require = (name) => { };
                         }
                     }
                 }
-                function setIcon() {
+
+                function setIcon(): void {
                     if (map.iconClass) {
                         $toastElement.classList.add(options.toastClass);
                         $toastElement.classList.add(iconClass);
                     }
                 }
-                function setSequence() {
+
+                function setSequence(): void {
                     if (options.newestOnTop) {
                         $container.insertBefore($toastElement, $container.firstChild);
-                    }
-                    else {
+                    } else {
                         $container.appendChild($toastElement);
                     }
                 }
-                function setTitle() {
+
+                function setTitle(): void {
                     if (map.title) {
                         var suffix = map.title;
                         if (options.escapeHtml) {
                             suffix = escapeHtml(map.title);
                         }
+
                         var suffixNode = document.createTextNode(suffix);
+
                         $titleElement.appendChild(suffixNode);
                         $titleElement.classList.add(options.titleClass);
                         $toastElement.appendChild($titleElement);
                     }
                 }
-                function setMessage() {
+
+                function setMessage(): void {
                     if (map.message) {
                         var suffix = map.message;
                         if (options.escapeHtml) {
                             suffix = escapeHtml(map.message);
                         }
+
                         var suffixNode = document.createTextNode(suffix);
+
                         $messageElement.appendChild(suffixNode);
                         $messageElement.classList.add(options.messageClass);
                         $toastElement.appendChild($messageElement);
                     }
                 }
-                function setCloseButton() {
+
+                function setCloseButton(): void {
                     if (options.closeButton && $closeElement) {
                         $closeElement.classList.add(options.closeClass);
                         $closeElement.setAttribute("role", "button");
                         $toastElement.insertBefore($closeElement, $toastElement.firstChild);
                     }
                 }
-                function setProgressBar() {
+
+                function setProgressBar(): void {
                     if (options.progressBar) {
                         $progressElement.classList.add(options.progressClass);
                         $toastElement.insertBefore($progressElement, $toastElement.firstChild);
                     }
                 }
-                function setRTL() {
+
+                function setRTL(): void {
                     if (options.rtl) {
                         $toastElement.classList.add('rtl');
                     }
                 }
-                function shouldExit(options, map) {
+
+                function shouldExit(options: ToastrOptions, map: NotifyOptionsMap): boolean {
                     if (options.preventDuplicates) {
                         if (map.message === previousToast) {
                             return true;
-                        }
-                        else {
+                        } else {
                             previousToast = map.message;
                         }
                     }
                     return false;
                 }
-                function hideToast(override) {
-                    var method = (override && options.closeMethod) !== false ? options.closeMethod : options.hideMethod;
+
+                function hideToast(override: boolean): any {
+                    var method: string = (override && options.closeMethod) !== false ? options.closeMethod : options.hideMethod;
                     var duration = override && options.closeDuration !== false ?
                         options.closeDuration : options.hideDuration;
                     var easing = override && options.closeEasing !== false ? options.closeEasing : options.hideEasing;
@@ -434,14 +590,16 @@ var require = (name) => { };
                         }
                     });
                 }
-                function delayedHideToast() {
+
+                function delayedHideToast(): void {
                     if (options.timeOut > 0 || options.extendedTimeOut > 0) {
                         intervalId = setTimeout(hideToast, options.extendedTimeOut);
                         progressBar.maxHideTime = parseFloat(options.extendedTimeOut.toString());
                         progressBar.hideEta = new Date().getTime() + progressBar.maxHideTime;
                     }
                 }
-                function stickAround() {
+
+                function stickAround(): void {
                     clearTimeout(intervalId || 0);
                     progressBar.hideEta = 0;
                     callAnimateMethod($toastElement, "stop", {
@@ -453,40 +611,44 @@ var require = (name) => { };
                     //    { duration: options.showDuration, easing: options.showEasing }
                     //);
                 }
-                function updateProgress() {
+
+                function updateProgress(): void {
                     var hideEta = progressBar.hideEta || 0;
                     var maxHideTime = progressBar.maxHideTime || 0;
+
                     var percentage = ((hideEta - (new Date().getTime())) / maxHideTime) * 100;
-                    var progressHtmlElement = $progressElement;
+                    var progressHtmlElement = <HTMLElement>$progressElement;
                     progressHtmlElement.style.width = percentage + '%';
                 }
             }
-            function getOptions() {
+
+            function getOptions(): ToastrOptions {
                 var result = getDefaults();
                 return Object.assign(result, toastr.options);
             }
-            function removeToast($toastElement) {
-                if (!$toastElement)
-                    return;
-                if (elementIsVisible($toastElement))
-                    return;
+
+            function removeToast($toastElement: HTMLElement | null): void {
+                if (!$toastElement) return;
+                if (elementIsVisible($toastElement)) return;
+
                 var $container = getContainer();
-                if (!$container)
-                    return;
+                if (!$container) return;
+
                 $toastElement.remove();
                 $toastElement = null;
+
                 if ($container.childElementCount === 0) {
                     $container.remove();
                     previousToast = null;
                 }
             }
+
         })();
     });
-}(typeof define === 'function' && define.amd ? define : function (deps, factory) {
-    if (typeof module !== 'undefined' && module.exports) {
+}(typeof define === 'function' && define.amd ? define : function (deps: any, factory: any) {
+    if (typeof module !== 'undefined' && module.exports) { //Node
         module.exports = factory(require('jquery'));
-    }
-    else {
+    } else {
         window.toastr = factory(window.jQuery);
     }
 }));
