@@ -1,8 +1,4 @@
 "use strict";
-var module = {
-    exports: "MODULE"
-};
-var require = (name) => { };
 /*
  * Toastr
  * Copyright 2012-2015
@@ -43,8 +39,8 @@ var require = (name) => { };
             var previousToast;
             return toastr;
             ////////////////
-            function throwException(err, message) {
-                throw new err(message);
+            function throwException(message) {
+                throw new Error(message);
             }
             function getElementFromSelector(selector) {
                 // return a single element from a jQuery-like selector
@@ -54,12 +50,20 @@ var require = (name) => { };
                 else if (selector.startsWith(".")) {
                     return document.getElementsByClassName(selector.slice(1))[0];
                 }
+                else if (selector.startsWith("<")) {
+                    return createElementFromHtml(selector);
+                }
                 else {
                     return document.getElementsByTagName(selector)[0];
                 }
             }
+            function createElementFromHtml(html) {
+                var element = document.createElement("div");
+                element.innerHTML = html;
+                return element.firstChild;
+            }
             function elementIsVisible(element) {
-                return !!(element.offsetWidth || element.offsetHeight || element.getClientRects().length);
+                return !!element && !!(element.offsetWidth || element.offsetHeight || element.getClientRects().length);
             }
             function elementOnHover(element, mouseOver, mouseOut) {
                 element.addEventListener('mouseover', mouseOver);
@@ -90,9 +94,6 @@ var require = (name) => { };
                 }
                 if (create) {
                     container = createContainer(options);
-                }
-                if (!container) {
-                    throw new Error("Unable to find or create container.");
                 }
                 return container;
             }
@@ -128,15 +129,28 @@ var require = (name) => { };
             }
             function clear($toastElement, clearOptions) {
                 var options = getOptions();
-                if (!clearToast($toastElement, options, clearOptions)) {
+                var element = getElementFromArgument($toastElement);
+                if (!clearToast(element, options, clearOptions)) {
                     var container = getContainer(options);
                     clearContainer(container, options);
                 }
             }
+            function isJQueryObject(obj) {
+                return obj instanceof jQuery;
+            }
+            function getElementFromArgument(obj) {
+                if (isJQueryObject(obj)) {
+                    return obj[0];
+                }
+                else {
+                    return obj;
+                }
+            }
             function remove($toastElement) {
                 var options = getOptions();
-                if ($toastElement && $toastElement.id === document.activeElement.id) {
-                    removeToast($toastElement);
+                var element = getElementFromArgument($toastElement);
+                if (element.id === document.activeElement.id) {
+                    removeToast(element);
                     return;
                 }
                 var container = getContainer(options);
@@ -169,7 +183,8 @@ var require = (name) => { };
                 var container = document.createElement("div");
                 container.setAttribute("id", options.containerId);
                 container.classList.add(options.positionClass);
-                options.target.appendChild(container);
+                var target = getElementFromSelector(options.target) || throwException("Container parent could not be located.");
+                target.appendChild(container);
                 return container;
             }
             function getDefaults() {
@@ -186,7 +201,7 @@ var require = (name) => { };
                     hideDuration: 1000,
                     hideEasing: 'swing',
                     onHidden: () => { },
-                    closeMethod: "",
+                    closeMethod: false,
                     closeDuration: false,
                     closeEasing: false,
                     closeOnHover: true,
@@ -230,10 +245,10 @@ var require = (name) => { };
                     iconClass = map.optionsOverride.iconClass || iconClass;
                 }
                 if (shouldExit(options, map)) {
-                    return;
+                    return null;
                 }
                 toastId++;
-                var $container = getContainer(options, true);
+                var $container = getContainer(options, true) || throwException("getContainer returned null instead of creating container");
                 var intervalId = null;
                 var $toastElement = document.createElement('div');
                 var $titleElement = document.createElement('div');
@@ -330,9 +345,6 @@ var require = (name) => { };
                         easing: options.showEasing,
                         complete: options.onShown
                     });
-                    //$toastElement[options.showMethod](
-                    //    { duration: options.showDuration, easing: options.showEasing, complete: options.onShown }
-                    //);
                     if (options.timeOut > 0) {
                         intervalId = setTimeout(hideToast, options.timeOut);
                         progressBar.maxHideTime = parseFloat(options.timeOut.toString());
@@ -362,7 +374,7 @@ var require = (name) => { };
                         if (options.escapeHtml) {
                             suffix = escapeHtml(map.title);
                         }
-                        var suffixNode = document.createTextNode(suffix);
+                        var suffixNode = createElementFromHtml(suffix);
                         $titleElement.appendChild(suffixNode);
                         $titleElement.classList.add(options.titleClass);
                         $toastElement.appendChild($titleElement);
@@ -374,7 +386,7 @@ var require = (name) => { };
                         if (options.escapeHtml) {
                             suffix = escapeHtml(map.message);
                         }
-                        var suffixNode = document.createTextNode(suffix);
+                        var suffixNode = createElementFromHtml(suffix);
                         $messageElement.appendChild(suffixNode);
                         $messageElement.classList.add(options.messageClass);
                         $toastElement.appendChild($messageElement);
@@ -410,7 +422,7 @@ var require = (name) => { };
                     return false;
                 }
                 function hideToast(override) {
-                    var method = (override && options.closeMethod) !== false ? options.closeMethod : options.hideMethod;
+                    var method = override && options.closeMethod !== false ? options.closeMethod.toString() : options.hideMethod;
                     var duration = override && options.closeDuration !== false ?
                         options.closeDuration : options.hideDuration;
                     var easing = override && options.closeEasing !== false ? options.closeEasing : options.hideEasing;

@@ -1,23 +1,11 @@
 
-interface Window {
-    toastr: any;
-    jQuery: any;
-}
 
-interface Definish {
-    amd: any
-}
 
-var module: { exports: string } = {
-    exports: "MODULE"
-};
-
-var require = (name: string) => { };
-
+declare var module: { exports: string };
+declare var require: (name: string) => {};
 declare function define(): void;
-declare namespace define {
-    export var amd: string;
-}
+declare namespace define { export var amd: string; }
+
 
 /*
  * Toastr
@@ -84,7 +72,7 @@ declare namespace define {
                 hideDuration: number | boolean,
                 hideEasing: string | boolean,
                 onHidden: { (evt?: MouseEvent): void } | null,
-                closeMethod: string,
+                closeMethod: string | boolean,
                 closeDuration: number | boolean,
                 closeEasing: string | boolean,
                 closeOnHover: boolean,
@@ -144,8 +132,8 @@ declare namespace define {
 
             ////////////////
 
-            function throwException<T>(err: { new(message: string): T }, message: string): void {
-                throw new err(message);
+            function throwException<T>(message: string): T {
+                throw new Error(message);
             }
 
             function getElementFromSelector(selector: string): HTMLElement | null {
@@ -154,13 +142,21 @@ declare namespace define {
                     return document.getElementById(selector.slice(1));
                 } else if (selector.startsWith(".")) {
                     return <HTMLElement>document.getElementsByClassName(selector.slice(1))[0];
+                } else if (selector.startsWith("<")) {
+                    return createElementFromHtml(selector);
                 } else {
                     return <HTMLElement>document.getElementsByTagName(selector)[0];
                 }
             }
 
+            function createElementFromHtml(html: string): HTMLElement {
+                var element = document.createElement("div");
+                element.innerHTML = html;
+                return <HTMLElement>element.firstChild;
+            }
+
             function elementIsVisible(element: HTMLElement): boolean {
-                return !!(element.offsetWidth || element.offsetHeight || element.getClientRects().length);
+                return !!element && !!(element.offsetWidth || element.offsetHeight || element.getClientRects().length);
             }
 
             function elementOnHover(element: HTMLElement, mouseOver: () => void, mouseOut: () => void): void {
@@ -186,7 +182,7 @@ declare namespace define {
                 });
             }
 
-            function getContainer(options?: any, create?: boolean): HTMLElement {
+            function getContainer(options?: any, create?: boolean): HTMLElement | null {
                 if (!options) { options = getOptions(); }
                 var container = document.getElementById(options.containerId);
                 if (container) {
@@ -195,9 +191,7 @@ declare namespace define {
                 if (create) {
                     container = createContainer(options);
                 }
-                if (!container) {
-                    throw new Error("Unable to find or create container.");
-                }
+
                 return container;
             }
 
@@ -235,18 +229,33 @@ declare namespace define {
                 });
             }
 
-            function clear($toastElement: HTMLElement, clearOptions: any) {
+            function clear($toastElement: JQuery | HTMLElement, clearOptions: any) {
                 var options = getOptions();
-                if (!clearToast($toastElement, options, clearOptions)) {
+                var element = getElementFromArgument($toastElement);
+                if (!clearToast(element, options, clearOptions)) {
                     var container = getContainer(options);
                     clearContainer(container, options);
                 }
             }
 
-            function remove($toastElement: HTMLElement) {
+            function isJQueryObject(obj: JQuery | HTMLElement): obj is JQuery {
+                return obj instanceof jQuery;
+            }
+
+            function getElementFromArgument(obj: JQuery | HTMLElement): HTMLElement {
+                if (isJQueryObject(obj)) {
+                    return obj[0];
+                } else {
+                    return obj;
+                }
+            }
+            function remove($toastElement: JQuery | HTMLElement) {
                 var options = getOptions();
-                if ($toastElement && $toastElement.id === document.activeElement.id) {
-                    removeToast($toastElement);
+
+                var element = getElementFromArgument($toastElement);
+
+                if (element.id === document.activeElement.id) {
+                    removeToast(element);
                     return;
                 }
 
@@ -259,7 +268,7 @@ declare namespace define {
 
             // internal functions
 
-            function clearContainer($container: HTMLElement, options: any) {
+            function clearContainer($container: HTMLElement | null, options: any) {
                 if (!$container) return;
                 var toastsToClear = $container.children;
                 for (var i = toastsToClear.length - 1; i >= 0; i--) {
@@ -281,12 +290,13 @@ declare namespace define {
                 return false;
             }
 
-            function createContainer(options: { containerId: string, positionClass: string, target: HTMLElement }) {
+            function createContainer(options: { containerId: string, positionClass: string, target: string }) {
                 var container = document.createElement("div");
                 container.setAttribute("id", options.containerId);
                 container.classList.add(options.positionClass);
 
-                options.target.appendChild(container);
+                var target = getElementFromSelector(options.target) || throwException<HTMLElement>("Container parent could not be located.");
+                target.appendChild(container);
                 return container;
             }
 
@@ -305,7 +315,7 @@ declare namespace define {
                     hideDuration: 1000,
                     hideEasing: 'swing',
                     onHidden: () => { },
-                    closeMethod: "",
+                    closeMethod: false,
                     closeDuration: false,
                     closeEasing: false,
                     closeOnHover: true,
@@ -343,7 +353,7 @@ declare namespace define {
                 listener(args);
             }
 
-            function notify(map: NotifyOptionsMap) {
+            function notify(map: NotifyOptionsMap): HTMLElement | null {
                 var options = getOptions();
                 var iconClass = map.iconClass || options.iconClass;
 
@@ -352,11 +362,11 @@ declare namespace define {
                     iconClass = map.optionsOverride.iconClass || iconClass;
                 }
 
-                if (shouldExit(options, map)) { return; }
+                if (shouldExit(options, map)) { return null; }
 
                 toastId++;
 
-                var $container = getContainer(options, true);
+                var $container = getContainer(options, true) || throwException<HTMLElement>("getContainer returned null instead of creating container");
 
                 var intervalId: number | null = null;
                 var $toastElement: HTMLElement = document.createElement('div');
@@ -474,10 +484,6 @@ declare namespace define {
                         complete: options.onShown
                     });
 
-                    //$toastElement[options.showMethod](
-                    //    { duration: options.showDuration, easing: options.showEasing, complete: options.onShown }
-                    //);
-
                     if (options.timeOut > 0) {
                         intervalId = setTimeout(hideToast, options.timeOut);
                         progressBar.maxHideTime = parseFloat(options.timeOut.toString());
@@ -510,9 +516,11 @@ declare namespace define {
                             suffix = escapeHtml(map.title);
                         }
 
-                        var suffixNode = document.createTextNode(suffix);
+                        //var suffixNode = createElementFromHtml(suffix);
+                        //$titleElement.appendChild(suffixNode);
 
-                        $titleElement.appendChild(suffixNode);
+                        $titleElement.innerHTML = suffix;
+
                         $titleElement.classList.add(options.titleClass);
                         $toastElement.appendChild($titleElement);
                     }
@@ -525,9 +533,10 @@ declare namespace define {
                             suffix = escapeHtml(map.message);
                         }
 
-                        var suffixNode = document.createTextNode(suffix);
+                        //var suffixNode = createElementFromHtml(suffix);
+                        //$messageElement.appendChild(suffixNode);
 
-                        $messageElement.appendChild(suffixNode);
+                        $messageElement.innerHTML = suffix;
                         $messageElement.classList.add(options.messageClass);
                         $toastElement.appendChild($messageElement);
                     }
@@ -566,7 +575,7 @@ declare namespace define {
                 }
 
                 function hideToast(override: boolean): any {
-                    var method: string = (override && options.closeMethod) !== false ? options.closeMethod : options.hideMethod;
+                    var method: string = override && options.closeMethod !== false ? options.closeMethod.toString() : options.hideMethod;
                     var duration = override && options.closeDuration !== false ?
                         options.closeDuration : options.hideDuration;
                     var easing = override && options.closeEasing !== false ? options.closeEasing : options.hideEasing;
